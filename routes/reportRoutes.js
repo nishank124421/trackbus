@@ -1,5 +1,14 @@
  const prisma = require('../prisma/prismaClient');
-const upload = require('../config/multerConfig');
+const upload = require('../../config/multerConfig');
+const multer = require('multer');
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'application/pdf'];
+        allowedTypes.includes(file.mimetype) ? cb(null, true) : cb(new Error('Invalid file type'), false);
+    }
+});
 const uploadToCloudinary = require('../utils/uploadToCloud');
 const express = require('express');
 const router = express.Router();
