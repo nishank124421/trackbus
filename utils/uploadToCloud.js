@@ -1,28 +1,29 @@
-const cloudinary = require('../config/cloudinaryConfig');
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 const uploadToCloudinary = (fileBuffer, mimetype) => {
     return new Promise((resolve, reject) => {
-        
-        // Decide resource type based on what was uploaded
         let resourceType = 'image';
         if (mimetype.startsWith('video')) resourceType = 'video';
         if (mimetype === 'application/pdf') resourceType = 'raw';
-
         const uploadStream = cloudinary.uploader.upload_stream(
             { 
-                folder: 'trackbus-evidence',  // stored in this folder on Cloudinary
+                folder: 'trackbus-evidence',
                 resource_type: resourceType 
             },
             (error, result) => {
                 if (error) {
                     reject(error);
                 } else {
-                    resolve(result.secure_url);  // returns the permanent URL of the file
+                    resolve(result.secure_url);
                 }
             }
         );
-
-        uploadStream.end(fileBuffer);  // send the file buffer to Cloudinary
+        uploadStream.end(fileBuffer);
     });
 };
 
