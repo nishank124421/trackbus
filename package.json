@@ -4,10 +4,14 @@
   "description": "Express server to serve existing TrackBus HTML/CSS/JS frontend without UI changes.",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "build": "npx prisma generate",
+    "start": "node server.js",
+    "test": "jest"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "ejs": "^5.0.2",
@@ -15,6 +19,9 @@
     "express-session": "^1.19.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.5.0",
+    "multer": "^2.1.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "prisma": "^6.19.3",
     "socket.io": "^4.8.3"
   }
 }

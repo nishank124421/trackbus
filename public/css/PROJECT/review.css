@@ -760,3 +760,56 @@
                 font-size: 28px;
             }
         }
+.review-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border-left: 5px solid #3b82f6;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.review-route {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.review-rating-display span {
+    font-size: 20px;
+    color: #facc15;
+}
+
+.review-text {
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 14px;
+}
+
+.review-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.delete-review-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 12px;
+}
+
+.delete-review-btn:hover {
+    background: #dc2626;
+}

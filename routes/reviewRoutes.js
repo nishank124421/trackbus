@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Review = require('../models/Review');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 // ─── Middleware: Log requests ────────────────────────────────────────────────
 const logRequest = (req, res, next) => {
@@ -43,7 +44,16 @@ router.get('/', logRequest, async (req, res) => {
         if (sort === 'highest') sortOption = { rating: -1 };
         if (sort === 'lowest') sortOption = { rating: 1 };
 
-        const reviews = await Review.find(query).sort(sortOption);
+        const reviews = await prisma.review.findMany({
+    where: route ? { route } : {},
+    orderBy: sort === 'oldest'
+        ? { createdAt: 'asc' }
+        : sort === 'highest'
+        ? { rating: 'desc' }
+        : sort === 'lowest'
+        ? { rating: 'asc' }
+        : { createdAt: 'desc' }
+});
         res.json(reviews);
     } catch (error) {
         console.error('Error fetching reviews:', error);
@@ -55,16 +65,31 @@ router.get('/', logRequest, async (req, res) => {
 // Get aggregate stats for the stats cards
 router.get('/stats', logRequest, async (req, res) => {
     try {
-        const total = await Review.countDocuments();
-        const aggResult = await Review.aggregate([
-            { $group: { _id: null, avgRating: { $avg: '$rating' }, positiveCount: { $sum: { $cond: [{ $gte: ['$rating', 4] }, 1, 0] } } } }
-        ]);
+      const total = await prisma.review.count();
 
-        const avgRating = aggResult.length > 0 ? aggResult[0].avgRating.toFixed(1) : '0.0';
-        const positiveCount = aggResult.length > 0 ? aggResult[0].positiveCount : 0;
-        const positivePercent = total > 0 ? Math.round((positiveCount / total) * 100) : 0;
+const reviews = await prisma.review.findMany();
 
-        res.json({ totalReviews: total, averageRating: parseFloat(avgRating), positivePercent });
+const avgRating =
+    reviews.length > 0
+        ? (
+              reviews.reduce((sum, r) => sum + r.rating, 0) /
+              reviews.length
+          ).toFixed(1)
+        : '0.0';
+
+const positiveCount = reviews.filter(r => r.rating >= 4).length;
+
+const positivePercent =
+    total > 0
+        ? Math.round((positiveCount / total) * 100)
+        : 0;
+
+res.json({
+    totalReviews: total,
+    averageRating: parseFloat(avgRating),
+    positivePercent
+});
+       
     } catch (error) {
         console.error('Error fetching review stats:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch stats' });
@@ -73,7 +98,7 @@ router.get('/stats', logRequest, async (req, res) => {
 
 // ─── POST /reviews ───────────────────────────────────────────────────────────
 // Submit a new review (Session auth)
-router.post('/', logRequest, checkSession, async (req, res) => {
+router.post('/', logRequest, softAuth, async (req, res) => {
     try {
         const { route, rating, reviewText } = req.body;
 
@@ -96,20 +121,19 @@ router.post('/', logRequest, checkSession, async (req, res) => {
 
         const reviewId = `rev_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-        const newReview = new Review({
-            id: reviewId,
-            route,
-            rating: parsedRating,
-            text: reviewText.trim(),
-            reviewText: reviewText.trim(),
-            author: req.sessionUser.name || 'Anonymous User',
-            userName: req.sessionUser.name || 'Anonymous User',
-            userId: req.sessionUser.userId || null,
-            date: new Date(),
-            createdAt: new Date()
-        });
-
-        const savedReview = await newReview.save();
+    const savedReview = await prisma.review.create({
+    data: {
+        id: reviewId,
+        route,
+        rating: parsedRating,
+        text: reviewText.trim(),
+        reviewText: reviewText.trim(),
+       author: req.sessionUser?.name || 'Anonymous User',
+        userName: req.sessionUser?.name || 'Anonymous User',
+        userId: req.sessionUser?.userId || null,
+        date: new Date()
+    }
+});
         console.log('✅ Review saved:', savedReview.id, 'by', req.sessionUser.name);
 
         res.status(201).json({ success: true, message: 'Review submitted successfully!', review: savedReview, id: savedReview.id });
@@ -128,14 +152,12 @@ router.delete('/:id', logRequest, checkSession, async (req, res) => {
         const userName = req.sessionUser.name;
 
         // Try find by custom id field first, then by _id
-        let review = await Review.findOne({ id: reviewId });
-        if (!review) {
-            review = await Review.findById(reviewId).catch(() => null);
-        }
-
-        if (!review) {
-            return res.status(404).json({ success: false, message: 'Review not found' });
-        }
+        const review = await prisma.review.findUnique({
+    where: {
+        id: reviewId
+    }
+});
+       
 
         // Check ownership - user must be the author
         if (review.userId && review.userId !== userId) {
@@ -148,11 +170,11 @@ router.delete('/:id', logRequest, checkSession, async (req, res) => {
         }
 
         // Delete the review
-        if (review.id) {
-            await Review.deleteOne({ id: reviewId });
-        } else {
-            await Review.findByIdAndDelete(reviewId);
-        }
+      await prisma.review.delete({
+    where: {
+        id: reviewId
+    }
+});
 
         console.log('🗑️ Review deleted:', reviewId);
         res.json({ success: true, message: 'Review deleted successfully' });

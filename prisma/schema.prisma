@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+   url      = env("DATABASE_URL")
+}
+
+model Bus {
+  id          Int      @id @default(autoincrement())
+  number      String
+  route       String
+  origin      String
+  destination String
+  departure   String
+  arrival     String
+  duration    String
+  location    String
+  operator    String
+  status      String
+  createdAt   DateTime @default(now())
+}
+model User {
+  id              Int      @id @default(autoincrement())
+  userId          String   @unique
+  name            String
+  email           String   @unique
+  password        String
+  cookieConsent   String?  @default("undecided")
+  createdAt       DateTime @default(now())
+}
+model Report {
+  id           Int      @id @default(autoincrement())
+  reportType   String
+  busNumber    String
+  location     String
+  date         String
+  time         String
+  description  String
+  severity     String
+  rating       String?
+  submittedBy  String?
+  userId       String?
+  evidenceUrl  String?
+  createdAt    DateTime @default(now())
+}
+model Ticket {
+  id             String   @id
+  userId         String
+  userName       String
+  from           String
+  to             String
+  date           String
+  departureTime  String
+  arrivalTime    String
+  busName        String
+  seatNumber     String
+  status         String
+  price          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+model Review {
+  id          String   @id
+  route       String
+  rating      Int
+  text        String
+  reviewText  String
+  author      String
+  userName    String
+  userId      String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

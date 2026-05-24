@@ -1,8 +1,11 @@
+ const prisma = require('../prisma/prismaClient');
+const upload = require('../config/multerConfig');
+const uploadToCloudinary = require('../utils/uploadToCloud');
 const express = require('express');
 const router = express.Router();
-const Report = require('../models/Report');
+
 const jwt = require('jsonwebtoken');
-const { Server } = require('socket.io');
+
 
 
 const logReportRequest = (req, res, next) => {
@@ -74,7 +77,11 @@ const checkSession = (req, res, next) => {
 };
 router.get('/', logReportRequest, async (req, res) => {
     try {
-        const reports = await Report.find().sort({ createdAt: -1 });
+        const reports = await prisma.report.findMany({
+    orderBy: {
+        createdAt: 'desc'
+    }
+});
         res.json(reports);
     } catch (error) {
         console.error('Error fetching reports:', error);
@@ -82,37 +89,36 @@ router.get('/', logReportRequest, async (req, res) => {
     }
 });
 
-router.post('/', logReportRequest, checkSession, validateReport, async (req, res) => {
+router.post('/', logReportRequest, checkSession, upload.single('evidence'), validateReport, async (req, res) => {
+
     try {
         const { reportType, busNumber, location, date, time, description, severity, rating } = req.body;
-
-        const newReport = new Report({
-            reportType,
-            busNumber,
-            location,
-            date,
-            time,
-            description,
-            severity,
-            rating: rating || 'Not rated',
-            submittedBy: req.sessionUser?.name || 'Anonymous',
-            userId: req.sessionUser?.userId || null
-        });
-
-        const savedReport = await newReport.save();
-        console.log('✅ Report saved to MongoDB:', savedReport._id);
-
-        if (severity === 'high') {
-            const io = req.app.get('io');
-            if (io) {
-                io.emit('highSeverityAlert', {
-                    message: `🚨 HIGH SEVERITY REPORT: ${reportType} on bus ${busNumber}`,
-                    report: savedReport
-                });
-                console.log('🔴 High severity alert broadcasted via Socket.io');
-            }
-        }
-
+       let evidenceUrl = null;
+       if (req.file) {
+    try {
+        evidenceUrl = await uploadToCloudinary(req.file.buffer, req.file.mimetype);
+        console.log('📸 Evidence uploaded to Cloudinary:', evidenceUrl);
+    } catch (uploadErr) {
+        console.error('Cloudinary upload failed:', uploadErr.message);
+        // Don't crash — report can still be saved without evidence
+    }
+}
+        const savedReport = await prisma.report.create({
+    data: {
+        reportType,
+        busNumber,
+        location,
+        date,
+        time,
+        description,
+        severity,
+        rating: rating || 'Not rated',
+        submittedBy: req.sessionUser?.name || 'Anonymous',
+        userId: req.sessionUser?.userId || null,
+        evidenceUrl: evidenceUrl
+    }
+});
+       
         res.status(201).json({
             success: true,
             message: 'Report submitted successfully!',
@@ -125,27 +131,45 @@ router.post('/', logReportRequest, checkSession, validateReport, async (req, res
     }
 });
 
-router.delete('/:id', logReportRequest, checkSession, async (req, res) => {
+
+router.get('/critical', async (req, res) => {
     try {
-        const reportId = req.params.id;
-        const deleted = await Report.findByIdAndDelete(reportId);
-        
-        if (!deleted) {
-            return res.status(404).json({ success: false, message: 'Report not found' });
-        }
-
-        console.log('🗑️ Report deleted:', reportId);
-        res.json({ success: true, message: 'Report deleted successfully' });
-
+        const criticalReports = await prisma.report.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json({ 
+            success: true, 
+            source: 'PostgreSQL', 
+            count: criticalReports.length,
+            reports: criticalReports 
+        });
     } catch (error) {
-        console.error('Error deleting report:', error);
-        res.status(500).json({ success: false, message: 'Failed to delete report' });
+        console.error('PostgreSQL read error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch from PostgreSQL' });
+    }
+});
+
+// NEW ROUTE: Delete a critical report from PostgreSQL
+router.delete('/critical/:id', async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        await prisma.report.delete({
+            where: { id: id }
+        });
+        res.json({ success: true, message: 'Deleted from PostgreSQL' });
+    } catch (error) {
+        console.error('PostgreSQL delete error:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete from PostgreSQL' });
     }
 });
 
 router.get('/view', async (req, res) => {
     try {
-        const reports = await Report.find().sort({ createdAt: -1 });
+        const reports = await prisma.report.findMany({
+    orderBy: {
+        createdAt: 'desc'
+    }
+});
         res.render('reports-view', { reports });
     } catch (error) {
         res.status(500).send('Error loading reports page');

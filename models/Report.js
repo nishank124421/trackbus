@@ -58,6 +58,11 @@ const reportSchema = new mongoose.Schema({
         default: null
     },
 
+    evidenceUrl: { 
+    type: String, 
+    default: null 
+},
+
     mirroredToPostgres: {
         type: Boolean,
         default: false

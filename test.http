@@ -1,0 +1,9 @@
+POST http://localhost:3000/api/user/signup
+Content-Type: application/json
+
+{
+  "userId": "USR999",
+  "name": "Test Student",
+  "email": "student@test.com",
+  "password": "yourpassword123"
+}

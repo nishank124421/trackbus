@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Ticket = require('../models/Ticket');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'trackbus_jwt_secret_2025';
@@ -115,7 +116,14 @@ router.get('/tracking', logRequest, (req, res) => {
 router.get('/tickets', logRequest, checkSession, async (req, res) => {
     try {
         const userId = req.sessionUser.userId;
-        const tickets = await Ticket.find({ userId }).sort({ createdAt: -1 });
+        const tickets = await prisma.ticket.findMany({
+    where: {
+        userId
+    },
+    orderBy: {
+        createdAt: 'desc'
+    }
+});
         res.json(tickets);
     } catch (error) {
         console.error('Error fetching tickets:', error);
@@ -137,22 +145,22 @@ router.post('/', logRequest, checkSession, async (req, res) => {
         // Generate ticket ID
         const ticketId = 'TKT' + Math.floor(100000 + Math.random() * 900000);
 
-        const newTicket = new Ticket({
-            id: ticketId,
-            userId: req.sessionUser.userId,
-            userName: req.sessionUser.name,
-            from,
-            to,
-            date,
-            departureTime,
-            arrivalTime: arrivalTime || 'N/A',
-            busName,
-            seatNumber: seatNumber || 'A' + Math.floor(1 + Math.random() * 20),
-            status: 'Upcoming',
-            price: price || '₹0'
-        });
-
-        const savedTicket = await newTicket.save();
+        const savedTicket = await prisma.ticket.create({
+    data: {
+        id: ticketId,
+        userId: req.sessionUser.userId,
+        userName: req.sessionUser.name,
+        from,
+        to,
+        date,
+        departureTime,
+        arrivalTime: arrivalTime || 'N/A',
+        busName,
+        seatNumber: seatNumber || 'A' + Math.floor(1 + Math.random() * 20),
+        status: 'Upcoming',
+        price: price || '₹0'
+    }
+});
         console.log('✅ Ticket booked:', savedTicket.id, 'by', req.sessionUser.name);
 
         res.status(201).json({ success: true, message: 'Ticket booked successfully!', ticket: savedTicket, id: savedTicket.id });
@@ -169,7 +177,12 @@ router.patch('/tickets/:id', logRequest, checkSession, async (req, res) => {
         const ticketId = req.params.id;
         const { status } = req.body;
 
-        const ticket = await Ticket.findOne({ id: ticketId, userId: req.sessionUser.userId });
+        const ticket = await prisma.ticket.findFirst({
+    where: {
+        id: ticketId,
+        userId: req.sessionUser.userId
+    }
+});
 
         if (!ticket) {
             return res.status(404).json({ success: false, message: 'Ticket not found or unauthorized' });
@@ -179,10 +192,21 @@ router.patch('/tickets/:id', logRequest, checkSession, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Ticket is already cancelled' });
         }
 
-        ticket.status = status || 'Cancelled';
-        ticket.updatedAt = new Date();
-        await ticket.save();
-
+    const updatedTicket = await prisma.ticket.update({
+    where: {
+        id: ticket.id
+    },
+    data: {
+        status: status || 'Cancelled',
+        updatedAt: new Date()
+    }
+});
+res.json({
+    success: true,
+    message: 'Ticket cancelled successfully',
+    ticket: updatedTicket
+});
+        return;
         console.log('🚫 Ticket cancelled:', ticketId);
         res.json({ success: true, message: 'Ticket cancelled successfully', ticket });
     } catch (error) {

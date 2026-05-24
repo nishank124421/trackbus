@@ -5,7 +5,7 @@
 //   POST   /reviews         → submit a review (session auth)
 //   DELETE /reviews/:id     → delete own review (session auth)
 
-const API_URL = 'http://localhost:3000/reviews';
+const API_URL = '/reviews';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getCurrentUserName() {

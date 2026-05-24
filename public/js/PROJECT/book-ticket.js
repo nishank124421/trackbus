@@ -142,14 +142,17 @@ function showMessage(message, isConfirmation = false, onConfirm = null) {
 // ─── Initialize: Load all data from backend ───────────────────────────────────
 async function initializeData() {
     showMessage('Loading data...');
+const cities = await fetchData(`${API_BASE_URL}/book-ticket/cities`);
+const routes = await fetchData(`${API_BASE_URL}/book-ticket/routes`);
+const tracking = await fetchData(`${API_BASE_URL}/book-ticket/tracking`);
 
-    const [cities, routes, tickets, tracking] = await Promise.all([
-        fetchData(`${API_BASE_URL}/book-ticket/cities`),
-        fetchData(`${API_BASE_URL}/book-ticket/routes`),
-        fetchData(`${API_BASE_URL}/book-ticket/tickets`),
-        fetchData(`${API_BASE_URL}/book-ticket/tracking`)
-    ]);
+let tickets = [];
 
+try {
+    tickets = await fetchData(`${API_BASE_URL}/book-ticket/tickets`);
+} catch (e) {
+    console.log('Tickets not loaded');
+}
     if (cities)   busData.cities   = cities;
     if (routes)   busData.routes   = routes;
     if (tickets)  busData.tickets  = Array.isArray(tickets) ? tickets : (tickets.tickets || []);

@@ -43,7 +43,7 @@
     <div class="welcome-banner">
       <div class="welcome-content">
         <div class="welcome-text">
-          <h1>Welcome back, <%= user.name %>!</h1>
+          <h1>Welcome back, <%= user?.name || "Guest" %>!</h1>
           <p>Here's your bus tracking and safety overview for today</p>
         </div>
         <div class="welcome-stats">
@@ -131,7 +131,7 @@
         U
       </div>
       <div class="profile-name" id="dropdownFullName" style="text-align: center; font-weight: bold; margin-top: 10px;">
-        <%= user.name %>
+       <%= user?.name || "Guest" %>
       </div>
       <div class="profile-role" id="dropdownUserId" style="text-align: center; color: gray; font-size: 12px;">Loading
         ID...
@@ -153,7 +153,7 @@
       <div class="info-box">
         <label>Email:</label>
         <span id="userEmailDisplay">
-          <%= user.email %>
+          <%= user?.email || "No Email" %>
         </span>
       </div>
       <div class="info-box">
