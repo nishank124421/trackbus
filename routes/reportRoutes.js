@@ -1,5 +1,4 @@
- const prisma = require('../prisma/prismaClient');
-const upload = require('../../config/multerConfig');
+const prisma = require('../prisma/prismaClient');
 const multer = require('multer');
 const upload = multer({
     storage: multer.memoryStorage(),
