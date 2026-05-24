@@ -1,5 +1,5 @@
  const prisma = require('../prisma/prismaClient');
-const upload = require('../../config/multerConfig');
+const upload = require('../config/multerConfig');
 const uploadToCloudinary = require('../utils/uploadToCloud');
 const express = require('express');
 const router = express.Router();
